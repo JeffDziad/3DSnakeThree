@@ -1,18 +1,22 @@
 const snakeScene = new THREE.Scene();
 const Renderer = new THREE.WebGL1Renderer();
-const Camera = new THREE.OrthographicCamera(innerWidth / -4, innerWidth / 4, innerHeight / 4, innerHeight / -4, 1, 1000);
-//! const Camera = new THREE.PerspectiveCamera(75, 1, 0.1, 2000);
+const RATIO = 3.6;
+const Camera = new THREE.OrthographicCamera(innerWidth / -RATIO, innerWidth / RATIO, innerHeight / RATIO, innerHeight / -RATIO, 1, 1000);
+// const Camera = new THREE.PerspectiveCamera(150, 1, 0.1, 2000);
 const Light = new THREE.DirectionalLight(0xffffff);
 const currentScene = snakeScene;
 
-const GAME_WIDTH = 400;
-const GAME_HEIGHT = 400;
+const raycaster = new THREE.Raycaster();
+
+const GAME_WIDTH = 600;
+const GAME_HEIGHT = 600;
 const TILE_SIZE = 25;
 const COLS = GAME_WIDTH / TILE_SIZE;
 const ROWS = GAME_HEIGHT / TILE_SIZE;
-const GAME_SPEED = 300;
+const GAME_SPEED = 20;
 
 const Tile_Grid = [];
+const Walls = [];
 class Tile {
     constructor(x=0, y=0, z=0, color=0xffffff) {
         this.geometry = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE);
@@ -38,28 +42,85 @@ class SnakeHead {
 
         this.mesh.position.z -= 6;
 
+        // Start Head at top right corner.
         this.mesh.position.x = Tile_Grid[0].mesh.position.x;
         this.mesh.position.y = -Tile_Grid[0].mesh.position.y;
+
+        this.directionChange = "right";
+        this.direction = "right";
+        this.velocity = {
+            x: 2.5,
+            y: 2.5
+        }
         snakeScene.add(this.mesh);
     }
     update() {
+        // Get new position and check for collisions (walls, body parts, apples).
+        let target;
+        switch(this.direction) {
+            case "up":
+                // if(onTile(this.mesh.position))
+                if(this.directionChange !== this.direction) {
+                    // Change Direction
+                }
+                this.up();
 
+                break;
+            case "down":
+                // if(onTile(this.mesh.position))
+                this.down();
+                break;
+            case "left":
+                // if(onTile(this.mesh.position))
+                this.left();
+                break;
+            case "right":
+                // if(onTile(this.mesh.position))
+                this.right();
+                break;
+        }
+    }
+    up() {
+        this.mesh.position.y = this.mesh.position.y + this.velocity.y;
+    }
+    down() {
+        this.mesh.position.y = this.mesh.position.y - this.velocity.y;
+    }
+    left() {
+        this.mesh.position.x = this.mesh.position.x - this.velocity.x;
+    }
+    right() {
+        this.mesh.position.x = this.mesh.position.x + this.velocity.x;
     }
 }
 
 class SnakeGame {
     constructor() {
         this.head = new SnakeHead();
+        this.inProgress = false;
     }
     update() {
-        this.head.update();
+        if(this.inProgress) {
+            this.head.update();
+        }
     }
-    updateClock() {
-        clearInterval(this.clock);
+    start() {
+        this.inProgress = true;
         this.clock = setInterval(() => {
             this.update();
         }, GAME_SPEED);
     }
+    stop() {
+        this.inProgress = false;
+        clearInterval(this.clock);
+    }
+}
+
+function onTile(position) {
+    for (let tile of Tile_Grid) {
+        if(tile.mesh.position === position) return true;
+    }
+    return false;
 }
 
 let currentGame;
@@ -71,7 +132,7 @@ function startup() {
     // 2. Add camera and its temporary helper
     snakeScene.add(Camera);
     //? snakeScene.add(new THREE.CameraHelper(Camera));
-    Camera.position.set(0, 0, 10);
+    Camera.position.set(0, 0, 100);
     // 3. Add Lighting
     Light.position.set(0, 0, 10).normalize();
     snakeScene.add(Light);
@@ -79,7 +140,7 @@ function startup() {
     wallsAndTiles();
     // 5. Create SnakeGame Instance.
     currentGame = new SnakeGame();
-    currentGame.updateClock();
+    currentGame.start();
     // 6. Start animating the current scene
     animate();
 }
@@ -107,7 +168,6 @@ function wallsAndTiles() {
     }
     // * Wall Lines
     let lineWidth = 5;
-    let walls = [];
     const wallMaterial = new THREE.LineBasicMaterial({color: 0xff0000, linewidth: lineWidth});
     const points = [];
     points.push(new THREE.Vector3(-xOffset - (TILE_SIZE/2), yOffset + (TILE_SIZE/2), 0));
@@ -117,8 +177,34 @@ function wallsAndTiles() {
     points.push(new THREE.Vector3(-xOffset - (TILE_SIZE/2), yOffset + (TILE_SIZE/2), 0));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const line = new THREE.Line(geometry, wallMaterial);
-    walls.push(line);
+    Walls.push(line);
     snakeScene.add(line);
 }
+
+addEventListener('resize', () => {
+    Camera.aspect = window.innerWidth / window.innerHeight;
+    Camera.updateProjectionMatrix();
+    Renderer.setSize(innerWidth, innerHeight);
+});
+
+addEventListener('keydown', (event) => {
+    let key = event.key;
+    switch(key.toUpperCase()) {
+        case "W":
+            currentGame.head.directionChange = "up";
+            break;
+        case "A":
+            currentGame.head.directionChange = "left";
+            break;
+        case "S":
+            currentGame.head.directionChange = "down";
+            break;
+        case "D":
+            currentGame.head.directionChange = "right";
+            break;
+        default:
+            break;
+    }
+});
 
 startup();
