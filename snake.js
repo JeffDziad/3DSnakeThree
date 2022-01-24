@@ -13,7 +13,7 @@ const GAME_HEIGHT = 600;
 const TILE_SIZE = 25;
 const COLS = GAME_WIDTH / TILE_SIZE;
 const ROWS = GAME_HEIGHT / TILE_SIZE;
-const GAME_SPEED = 20;
+const GAME_SPEED = 10;
 
 const Tile_Grid = [];
 const Walls = [];
@@ -49,33 +49,49 @@ class SnakeHead {
         this.directionChange = "right";
         this.direction = "right";
         this.velocity = {
-            x: 2.5,
-            y: 2.5
+            x: 2.0,
+            y: 2.0
         }
         snakeScene.add(this.mesh);
     }
     update() {
         // Get new position and check for collisions (walls, body parts, apples).
-        let target;
-        switch(this.direction) {
+        if(this.directionChange !== this.direction) {
+            if(centeredOnTile(this.mesh.position)) {
+                // Change Direction
+                this.direction = this.directionChange;
+                this.move(this.direction);
+            } else {
+                this.move(this.direction);
+            }
+        } else {
+            this.move(this.direction);
+        }
+        this.checkCollisions();
+    }
+    checkCollisions() {
+        let pos = this.mesh.position;
+        if(pos.x > Tile_Grid[Tile_Grid.length-1].mesh.position.x || pos.x < Tile_Grid[0].mesh.position.x) {
+            // X Wall Collision
+            currentGame.stop();
+        }
+        if(pos.y < Tile_Grid[0].mesh.position.y || pos.y > Tile_Grid[Tile_Grid.length-1].mesh.position.y) {
+            // Y Wall Collision
+            currentGame.stop();
+        }
+    }
+    move(direction) {
+        switch (direction) {
             case "up":
-                // if(onTile(this.mesh.position))
-                if(this.directionChange !== this.direction) {
-                    // Change Direction
-                }
                 this.up();
-
                 break;
             case "down":
-                // if(onTile(this.mesh.position))
                 this.down();
                 break;
             case "left":
-                // if(onTile(this.mesh.position))
                 this.left();
                 break;
             case "right":
-                // if(onTile(this.mesh.position))
                 this.right();
                 break;
         }
@@ -116,9 +132,9 @@ class SnakeGame {
     }
 }
 
-function onTile(position) {
+function centeredOnTile(position) {
     for (let tile of Tile_Grid) {
-        if(tile.mesh.position === position) return true;
+        if(tile.mesh.position.x === position.x && tile.mesh.position.y === position.y) return true;
     }
     return false;
 }
