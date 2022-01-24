@@ -5,20 +5,35 @@ const Camera = new THREE.OrthographicCamera(innerWidth / -RATIO, innerWidth / RA
 // const Camera = new THREE.PerspectiveCamera(150, 1, 0.1, 2000);
 const Light = new THREE.DirectionalLight(0xffffff);
 const currentScene = snakeScene;
-
 const raycaster = new THREE.Raycaster();
 
+const DIRECTIONS = {
+    UP: {
+        val: 2
+    },
+    DOWN: {
+        val: 4
+    },
+    LEFT: {
+        val: 1
+    },
+    RIGHT: {
+        val: 3
+    }
+}
 const GAME_WIDTH = 600;
 const GAME_HEIGHT = 600;
 const TILE_SIZE = 25;
 const COLS = GAME_WIDTH / TILE_SIZE;
 const ROWS = GAME_HEIGHT / TILE_SIZE;
-const GAME_SPEED = 10;
+const GAME_SPEED = 5;
+const APPLE_COUNT = 2;
 
 const Tile_Grid = [];
 const Walls = [];
+const Apples = [];
 class Tile {
-    constructor(x=0, y=0, z=0, color=0xffffff) {
+    constructor(x = 0, y = 0, z = 0, color = 0xffffff) {
         this.geometry = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE);
         this.material = new THREE.MeshPhongMaterial({color: color, side: THREE.DoubleSide});
         this.mesh = new THREE.Mesh(this.geometry, this.material);
@@ -26,8 +41,33 @@ class Tile {
         this.mesh.position.x = x;
         this.mesh.position.y = y;
         this.mesh.position.z = z;
+
+        this.headPresent = false;
     }
 
+    update() {
+
+    }
+
+    checkOccupants() {
+        // Check for snake head. Possibly detect snake parts later.
+        let head = currentGame.head;
+        if (head.mesh.position.x > this.mesh.position.x - TILE_SIZE / 2 && head.mesh.position.x < this.mesh.position.x + TILE_SIZE / 2) {
+            // Intersects on x
+            if (head.mesh.position.y < this.mesh.position.y + TILE_SIZE / 2 && head.mesh.position.y > this.mesh.position.y - TILE_SIZE / 2) {
+                // Intersects on y
+                this.headPresent = true;
+            } else {
+                this.headPresent = false;
+            }
+        } else {
+            this.headPresent = false;
+        }
+    }
+}
+class Apple {
+    constructor() {
+    }
 }
 
 class SnakePart {
@@ -46,18 +86,26 @@ class SnakeHead {
         this.mesh.position.x = Tile_Grid[0].mesh.position.x;
         this.mesh.position.y = -Tile_Grid[0].mesh.position.y;
 
-        this.directionChange = "right";
-        this.direction = "right";
+        this.directionChange = DIRECTIONS.RIGHT;
+        this.direction = DIRECTIONS.RIGHT;
         this.velocity = {
-            x: 2.0,
-            y: 2.0
+            x: 1.0,
+            y: 1.0
         }
         snakeScene.add(this.mesh);
     }
     update() {
         // Get new position and check for collisions (walls, body parts, apples).
         if(this.directionChange !== this.direction) {
-            if(centeredOnTile(this.mesh.position)) {
+            let d1 = this.direction.val;
+            let d2 = this.directionChange.val;
+            if(isEven(d1) && isEven(d2)) {
+                this.direction = this.directionChange;
+                this.move(this.direction);
+            } else if(isOdd(d1) && isOdd(d2)) {
+                this.direction = this.directionChange;
+                this.move(this.direction);
+            } else if(centeredOnTile(this.mesh.position)) {
                 // Change Direction
                 this.direction = this.directionChange;
                 this.move(this.direction);
@@ -82,16 +130,16 @@ class SnakeHead {
     }
     move(direction) {
         switch (direction) {
-            case "up":
+            case DIRECTIONS.UP:
                 this.up();
                 break;
-            case "down":
+            case DIRECTIONS.DOWN:
                 this.down();
                 break;
-            case "left":
+            case DIRECTIONS.LEFT:
                 this.left();
                 break;
-            case "right":
+            case DIRECTIONS.RIGHT:
                 this.right();
                 break;
         }
@@ -139,6 +187,14 @@ function centeredOnTile(position) {
     return false;
 }
 
+function isEven(n) {
+    return n % 2 === 0;
+}
+
+function isOdd(n) {
+    return Math.abs(n % 2) === 1;
+}
+
 let currentGame;
 
 function startup() {
@@ -164,6 +220,11 @@ function startup() {
 function animate() {
     requestAnimationFrame(animate);
     Renderer.render(currentScene, Camera);
+
+    for (const tileGridElement of Tile_Grid) {
+        tileGridElement.update();
+        tileGridElement.checkOccupants();
+    }
 }
 
 function wallsAndTiles() {
@@ -177,10 +238,6 @@ function wallsAndTiles() {
             snakeScene.add(t.mesh);
             Tile_Grid.push(t);
         }
-    }
-    // Apply styling to Grid Tiles.
-    for (const tile of Tile_Grid) {
-
     }
     // * Wall Lines
     let lineWidth = 5;
@@ -207,16 +264,16 @@ addEventListener('keydown', (event) => {
     let key = event.key;
     switch(key.toUpperCase()) {
         case "W":
-            currentGame.head.directionChange = "up";
+            currentGame.head.directionChange = DIRECTIONS.UP;
             break;
         case "A":
-            currentGame.head.directionChange = "left";
+            currentGame.head.directionChange = DIRECTIONS.LEFT;
             break;
         case "S":
-            currentGame.head.directionChange = "down";
+            currentGame.head.directionChange = DIRECTIONS.DOWN;
             break;
         case "D":
-            currentGame.head.directionChange = "right";
+            currentGame.head.directionChange = DIRECTIONS.RIGHT;
             break;
         default:
             break;
